@@ -366,6 +366,7 @@ def match_learned(
     scales: tuple[float, ...],
     threshold: float,
     key: str | None = None,
+    research: bool = False,
 ) -> tuple[float, tuple[int, int] | None]:
     template = load_template(path)
     if template is None:
@@ -373,6 +374,8 @@ def match_learned(
     key = key or str(path)
     known = LEARNED_SCALES.get(key)
     score, center, scale = best_match(frame, template, (known,) if known else scales)
+    if (center is None or score < threshold) and known and research:
+        score, center, scale = best_match(frame, template, scales)
     if center is None or score < threshold:
         return score, None
     LEARNED_SCALES[key] = scale
@@ -457,15 +460,19 @@ def find_train_menu_button(frame: np.ndarray) -> tuple[int, int] | None:
     return None
 
 
-WORKSHOP_TEMPLATES = tuple(sorted(UI_DIR.glob("siege_workshop*.png")))
+# Tight crops of the stone tower only, so neighbouring buildings, the moving
+# catapult arm and the status icons do not change the match.
+WORKSHOP_TEMPLATES = tuple(sorted(UI_DIR.glob("siege_workshop_tower*.png")))
+WORKSHOP_SCALES = tuple(round(0.4 + 0.1 * step, 2) for step in range(19))
+WORKSHOP_THRESHOLD = 0.6
 
 
-def match_workshop(frame: np.ndarray) -> tuple[float, tuple[int, int] | None]:
+def match_workshop(frame: np.ndarray, research: bool = True) -> tuple[float, tuple[int, int] | None]:
     best_score = 0.0
     best_center: tuple[int, int] | None = None
     for path in WORKSHOP_TEMPLATES:
-        score, center = match_learned(frame, path, (0.6, 0.75, 0.9, 1.0, 1.15, 1.3), 0.62)
-        if center is not None and score >= 0.85:
+        score, center = match_learned(frame, path, WORKSHOP_SCALES, WORKSHOP_THRESHOLD, research=research)
+        if center is not None and score >= 0.8:
             return score, center
         if score > best_score:
             best_score, best_center = score, center
@@ -474,7 +481,7 @@ def match_workshop(frame: np.ndarray) -> tuple[float, tuple[int, int] | None]:
 
 def find_workshop_building(frame: np.ndarray) -> tuple[int, int] | None:
     score, center = match_workshop(frame)
-    if center is None or score < 0.62:
+    if center is None or score < WORKSHOP_THRESHOLD:
         return None
     return center
 
@@ -626,7 +633,7 @@ def select_workshop(game: Game) -> bool:
         print("  Siege Workshop is already selected.")
         return True
     score, building = match_workshop(frame)
-    if building is not None and score >= 0.62:
+    if building is not None and score >= WORKSHOP_THRESHOLD:
         game.last_building = building
         source = f"image match {score:.2f}"
     elif game.last_building is not None:

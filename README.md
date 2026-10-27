@@ -134,6 +134,29 @@ Press `F8` during sweep to stop immediately.
 - Lighting, snow effects, and alliance territory colors can break matching; refresh templates after graphics changes.
 - Gem nodes look similar to other small map icons; good templates matter more than algorithm tweaks.
 
+## Siege training loop
+
+`speedup_train.py` repeats this cycle on the Sandboxie client:
+
+1. Select the Siege Workshop (found by image, day or night).
+2. Click the catapult button to open the training screen.
+3. Click the blue **TRAIN** button. **INSTANT** (gems) is never clicked.
+4. Select the workshop again and click the orange speed up button.
+5. Click **USE**, biggest useful item first, re-reading the timer after each click. An item is used only if it wastes at most 5 minutes, so a 1-hour speedup is skipped when 5 minutes are left.
+6. Click the workshop to collect the troops, then repeat.
+
+Each pass looks at the screen first (training screen, speed up list, troops ready, workshop menu, or plain city) and does the matching step, so you can start it at any point in the cycle. Keep the city camera still, then:
+
+```powershell
+python speedup_train.py --window "Rise of Kingdoms"            # until F8
+python speedup_train.py --window "Rise of Kingdoms" --loops 3  # collect 3 batches, then stop
+python speedup_train.py --window "Rise of Kingdoms" --dry-run  # show the next action only
+```
+
+Press `F8` (or move the mouse to a screen corner) to stop. It also stops after 3 failed steps in a row. Screenshots of each step go to `%LOCALAPPDATA%\rok-gem-scanner\steps`.
+
+Run a single step with `--step workshop|train|start|speedup|use|collect`. Button images live in `templates/ui/`. This needs [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) installed.
+
 ## Sweep notes
 
 - Sweep mode physically drags the map, so keep the game window visible and avoid touching mouse/keyboard during the run.
